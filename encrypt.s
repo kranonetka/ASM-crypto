@@ -75,7 +75,7 @@ encrypt:
 	mov byte[src_text+ecx],dl
 	inc ecx
 	cmp ecx,text_len
-	jne ._loop
+	jl ._loop
 pop edx
 pop ecx
 pop ebx
@@ -113,7 +113,7 @@ decrypt:
 	mov byte[src_text+ecx],dl ;writing decoded symbol in src_text
 	inc ecx
 	cmp ecx,text_len
-	jne ._loop
+	jl ._loop
 pop edx
 pop ecx
 pop ebx

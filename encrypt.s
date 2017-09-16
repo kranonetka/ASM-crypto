@@ -40,14 +40,16 @@ section .text
 	int 0x80
 	test eax,eax
 	js open_error		;Error, if eax<0
+	push eax		;descriptor at stack
 	mov eax,4
 	mov ebx,1
 	mov ecx,succesfull_msg
 	mov edx,succesfull_len
 	int 0x80
-	mov [descriptor],eax	;file descriptor in descriptor
-	mov ebx,eax		;ebx - file descriptor
+	;;;mov eax	;file descriptor in descriptor
+	;;;mov ebx,eax		;ebx - file descriptor
 	mov eax,3		;read from file
+	pop ebx			;descriptor from stack
 	mov ecx,buffer		;read to buffer
 	mov edx,4096		;read 4096 bytes
 	int 0x80

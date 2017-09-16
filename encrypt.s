@@ -6,7 +6,6 @@ section .data
 	key_len: equ $-key
 	printCount: dw 95
 	endl: db 0,10
-
 section .text
 _start:
 	mov eax,4
@@ -19,6 +18,72 @@ _start:
 	mov ecx,endl
 	mov edx,2
 	int 0x80
+
+;*****************
+;TEST OPENING FILE
+;*****************
+section .data
+	filename: db "text.txt",0
+	error_msg: db "ERROR OPENING FILE",10,0
+	error_msg_len: equ $-error_msg
+	read_msg: db "ERROR READING FROM FILE",10,0
+	read_len: equ $-read_msg
+	succesfull_msg: db "OK",10,0
+	succesfull_len: equ $-succesfull_msg
+section .bss
+	descriptor: resb 4
+	buffer: resb 4096
+section .text
+	mov eax,5		;open
+	mov ebx,filename	;filename
+	mov ecx,0		;read only
+	int 0x80
+	test eax,eax
+	js open_error		;Error, if eax<0
+	mov eax,4
+	mov ebx,1
+	mov ecx,succesfull_msg
+	mov edx,succesfull_len
+	int 0x80
+	mov [descriptor],eax	;file descriptor in descriptor
+	mov ebx,eax		;ebx - file descriptor
+	mov eax,3		;read from file
+	mov ecx,buffer		;read to buffer
+	mov edx,4096		;read 4096 bytes
+	int 0x80
+	test eax,eax
+	js read_error		;error, if eax<0
+	mov edx,eax		;edx - count of readed bytes
+	mov eax,4
+	mov ebx,1
+	mov ecx,buffer
+	int 0x80
+	mov eax,6		;close file
+	mov ebx,[descriptor]	;ebx- descriptor
+	int 0x80
+	mov eax,1
+	mov ebx,0
+	int 0x80
+open_error:
+	mov eax,4
+	mov ebx,1
+	mov ecx,error_msg
+	mov edx,error_msg_len
+	int 0x80
+	mov eax,1
+	mov ebx,0
+	int 0x80
+read_error:
+	mov eax,4
+	mov ebx,1
+	mov ecx,read_msg
+	mov edx,read_len
+	int 0x80
+	mov eax,1
+	mov ebx,0
+	int 0x80
+;*****************
+
 	call encrypt
 	mov eax,4
 	mov ebx,1

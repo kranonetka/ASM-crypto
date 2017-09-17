@@ -8,4 +8,4 @@ test:
 	nasm -f elf test.s
 	ld -m elf_i386 test.o -o test
 	@./test
-	@rm test.o  rm test
+	@rm test.o test

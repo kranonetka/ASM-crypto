@@ -2,6 +2,7 @@ global _start
 section .data
 	filename: db "filename: "
 	filename_len: equ $-filename
+	secret_char: db '#'
 section .bss
 	terminal_params: resb 36
 	buffer: resb 4096
@@ -50,25 +51,47 @@ _start:
 	mov ecx,0x5401
 	mov edx,terminal_params
 	int 0x80
-	
-	xor [terminal_params+12],byte 8
+		
+	mov eax,[terminal_params+12]
+	push eax
+	and eax,dword ~(2+8)
+	mov [terminal_params+12],eax
 	
 	mov eax,54
 	inc ecx
 	int 0x80
-	
+
+	push esi
+	xor esi,esi
+	xor edx,edx
+	inc edx
+._loop:
 	xor eax,eax
 	times 3 inc eax
+	xor ebx,ebx
 	mov ecx,key
-	mov edx,key_size
-	int 0x80
-
-	mov edx,eax
+	add ecx,esi
+	int 0x80	;read 1byte from keyboard
 	mov eax,4
 	inc ebx
+	mov ecx,secret_char
+	int 0x80	;echo *
+	mov ecx,key
+	add ecx,esi
+	inc esi
+	cmp esi,key_size
+	je ._key_input_done
+	cmp [ecx],byte 10
+	jne ._loop
+._key_input_done:
+	mov edx,esi
+	pop esi
+	mov eax,4
+	inc ebx
+	mov ecx,key
 	int 0x80
 
-	xor [terminal_params+12],byte 8
+	pop dword [terminal_params+12]
 	mov eax,54
 	xor ebx,ebx
 	mov ecx,0x5402

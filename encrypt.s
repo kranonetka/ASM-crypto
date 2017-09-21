@@ -7,8 +7,10 @@ section .bss
 	terminal_params: resb 36
 	buffer: resb 4096
 	buffer_size: equ $-buffer
+	text_len: resb 2
 	key: resb 80
 	key_size: equ $-key
+	key_len: resb 1
 section .text
 _start:
 	mov eax,4
@@ -39,6 +41,7 @@ _start:
 	mov edx,buffer_size
 	int 0x80
 
+	mov [text_len],ax
 	mov edx,eax
 	mov eax,4
 	xor ebx,ebx
@@ -86,6 +89,7 @@ _start:
 ._key_input_done:
 	mov edx,esi
 	pop esi
+	mov [key_len],dl
 	mov eax,4
 	inc ebx
 	mov ecx,key
@@ -105,3 +109,18 @@ _start:
 	mov eax,1
 	xor ebx,ebx
 	int 0x80
+
+;buffer - readed text
+;text_len - count of symbols in text (2 bytes)
+;key - key
+;key_len - count of symbols in key (1 byte)
+encrypt:
+	pushad
+	xor ecx,ecx	;ecx - pos of cur char in text (stars from 0)
+	xor ebx,ebx
+	mov bl,[key_len] ;bl - lenght of key
+._loop:
+	mov ax,cx
+	div bl	;al - pos of char in key for encryption
+
+	popad

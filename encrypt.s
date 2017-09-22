@@ -2,7 +2,8 @@ global _start
 section .data
 	filename: db "filename: "
 	filename_len: equ $-filename
-	secret_char: db '#'
+	secret_char: db '?'
+	print_count: db 95
 section .bss
 	terminal_params: resb 36
 	buffer: resb 4096
@@ -90,10 +91,6 @@ _start:
 	mov edx,esi
 	pop esi
 	mov [key_len],dl
-	mov eax,4
-	inc ebx
-	mov ecx,key
-	int 0x80
 
 	pop dword [terminal_params+12]
 	mov eax,54
@@ -106,6 +103,23 @@ _start:
 	pop ebx
 	int 0x80
 
+	mov eax,4
+	mov ebx,1
+	mov ecx,buffer
+	xor edx,edx
+	mov dx,[text_len]
+	int 0x80
+	
+	call encrypt
+
+	mov eax,4
+	int 0x80
+	
+	call decrypt
+
+	mov eax,4
+	int 0x80
+
 	mov eax,1
 	xor ebx,ebx
 	int 0x80
@@ -115,12 +129,48 @@ _start:
 ;key - key
 ;key_len - count of symbols in key (1 byte)
 encrypt:
-	pushad
-	xor ecx,ecx	;ecx - pos of cur char in text (stars from 0)
+pushad
+	xor eax,eax
 	xor ebx,ebx
-	mov bl,[key_len] ;bl - lenght of key
+	xor ecx,ecx	;ecx - pos of cur char in text (starts from 0)
+	xor edx,edx
 ._loop:
 	mov ax,cx
-	div bl	;al - pos of char in key for encryption
+	div byte [key_len]	;ah - pos of char in key for encryption
+	xor al,al
+	mov bl,byte [buffer+ecx]
+	add bl,byte [key+eax]
+	sub bl,64
+	mov ax,bx
+	div byte [print_count]
+	add ah,32
+	mov [buffer+ecx],ah
+	inc ecx
+	cmp cx,word [text_len]
+	jl ._loop
+popad
+ret
 
-	popad
+decrypt:
+pushad
+	xor eax,eax
+	xor ebx,ebx
+	xor ecx,ecx
+	xor edx,edx
+._loop:
+	mov ax,cx
+	div byte [key_len] ;ah - pos of char in key for decryption
+	xor al,al
+	mov bl,[buffer+ecx]	;bl - ecnrypted symbol
+	cmp bl,byte [key+eax]	;
+	jge ._greater
+	add bl,byte [print_count]
+._greater:
+	sub bl,byte [key+eax]
+	add bl,32
+	mov [buffer+ecx],bl
+	inc ecx
+	cmp cx,word [text_len]
+	jl ._loop
+popad
+ret

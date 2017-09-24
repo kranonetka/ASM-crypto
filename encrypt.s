@@ -41,6 +41,7 @@ _start:
 	mov ecx,buffer
 	mov edx,buffer_size
 	int 0x80	;read from file to buffer
+	dec eax
 
 	push ebx	;descriptor at stack
 
@@ -119,17 +120,12 @@ key_input_done:
 	mov edx,terminal_params
 	int 0x80
 
-	mov eax,4
-	inc ebx	;stdout
-	mov ecx,key
-	mov edx,esi
-	int 0x80
-
 	mov edi,buffer	;text
 	mov ebx,esi	;key lenght
 	mov esi,key	;key
 	pop eax	;text len
 	call encrypt
+	call decrypt
 
 	mov edx,eax
 	mov eax,4
@@ -168,6 +164,35 @@ encrypt:
 	div word [print_count] ;dl - encrypted symbol without +32
 	add dl,32	;dl - encrypted symbol
 	mov [edi+ecx],dl
+	inc ecx
+	cmp ecx,[esp]
+	jl ._loop
+pop eax
+pop edx
+pop ecx
+ret
+
+decrypt:
+	;edi - text
+	;esi - key
+	;eax - text lenght
+	;ebx - key lenght
+	push ecx
+	push edx
+	push eax
+	xor ecx,ecx	;ecx - pos of curr char 4 decrypt
+._loop:
+	xor edx,edx
+	mov ax,cx	;DX:AX = CX (in AX)
+	div bx	;dx - pos of char in key 4 decrypt
+	mov al,[edi+ecx]	;al - encrypted symbol
+	cmp al,[esi+edx]
+	jge ._greater
+	add al,95
+._greater:
+	sub al,[esi+edx]
+	add al,32	;al - decrypted symbol
+	mov [edi+ecx],al
 	inc ecx
 	cmp ecx,[esp]
 	jl ._loop

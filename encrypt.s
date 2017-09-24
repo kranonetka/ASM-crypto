@@ -1,176 +1,177 @@
 global _start
 section .data
-	filename: db "filename: "
-	filename_len: equ $-filename
-	secret_char: db '?'
-	print_count: db 95
+	filename_string: db "filename: "
+	filename_len: equ $-filename_string
+	password_string: db "password: "
+	password_len: equ $-password_string
+	buffer8: db '*'
+	backspace: db 0x08, 0x20, 0x08
+	print_count: dw 95
 section .bss
 	terminal_params: resb 36
 	buffer: resb 4096
 	buffer_size: equ $-buffer
-	text_len: resb 2
 	key: resb 80
 	key_size: equ $-key
-	key_len: resb 1
 section .text
 _start:
 	mov eax,4
 	xor ebx,ebx
 	inc ebx
-	mov ecx,filename
+	mov ecx,filename_string
 	mov edx,filename_len
-	int 0x80
+	int 0x80	;print("filename: ")
 
 	xor eax,eax
 	times 3 inc eax
 	xor ebx,ebx
 	mov ecx,buffer
 	mov edx,buffer_size
-	int 0x80
-	and [buffer+eax-1], byte 0	;replace enter to '\0'
+	int 0x80	;user input from keyboard
+	mov [buffer+eax-1],byte 0	;replace enter to '\0'
 
 	mov eax,5
 	mov ebx,buffer
 	xor ecx,ecx
-	int 0x80
-	push eax
+	int 0x80	;open file with typed name
 
+	mov ebx,eax
 	xor eax,eax
 	times 3 inc eax
-	mov ebx,dword [esp]
 	mov ecx,buffer
 	mov edx,buffer_size
-	int 0x80
+	int 0x80	;read from file to buffer
 
-	mov [text_len],ax
+	push ebx	;descriptor at stack
+
 	mov edx,eax
 	mov eax,4
 	xor ebx,ebx
 	inc ebx
 	mov ecx,buffer
-	int 0x80
+	int 0x80	;print file content
+	push edx
 
-	mov eax,54
-	xor ebx,ebx
-	mov ecx,0x5401
+	mov eax,4
+	mov ecx,password_string
+	mov edx,password_len
+	int 0x80
+	
+	mov eax,54	;syscall_ioctl
+	xor ebx,ebx	;stdin
+	mov ecx,0x5401	;TCGETS
 	mov edx,terminal_params
 	int 0x80
-		
-	mov eax,[terminal_params+12]
-	push eax
-	and eax,dword ~(2+8)
-	mov [terminal_params+12],eax
 	
-	mov eax,54
-	inc ecx
+	push dword [terminal_params+12]	;save current terminal params
+
+	and [terminal_params+12],dword ~10	;disable canonical and echo flags
+	mov eax,54	;syscall_ioctl
+	inc ecx	;TCSETS
 	int 0x80
 
-	push esi
 	xor esi,esi
 	xor edx,edx
 	inc edx
-._loop:
+key_input:
 	xor eax,eax
 	times 3 inc eax
 	xor ebx,ebx
 	mov ecx,key
 	add ecx,esi
-	int 0x80	;read 1byte from keyboard
+	int 0x80	;read single char from keyboard
+	cmp byte [ecx],10	;why test byte [ecx],10 doesn't work?
+	je key_input_enter	;if (enter)
+	cmp byte [ecx],127
+	je key_input_backspace	;if (backspace)
 	mov eax,4
-	inc ebx
-	mov ecx,secret_char
-	int 0x80	;echo *
-	mov ecx,key
-	add ecx,esi
+	inc ebx	;ebx=1
+	mov ecx,buffer8
+	int 0x80
 	inc esi
 	cmp esi,key_size
-	je ._key_input_done
-	cmp [ecx],byte 10
-	jne ._loop
-._key_input_done:
-	mov edx,esi
-	pop esi
-	mov [key_len],dl
-
+	jl key_input
+	jmp key_input_done
+key_input_backspace:
+	test esi,esi
+	jz key_input
+	mov eax,4
+	inc ebx
+	mov ecx,backspace
+	times 2 inc edx
+	int 0x80
+	times 2 dec edx
+	dec esi
+	jmp key_input
+key_input_enter:
+	test esi,esi
+	jz key_input
+	mov [buffer8],byte 10
+	mov eax,4
+	inc ebx
+	mov ecx,buffer8
+	int 0x80
+key_input_done:
 	pop dword [terminal_params+12]
-	mov eax,54
-	xor ebx,ebx
-	mov ecx,0x5402
+	mov eax,54	;syscall_ioctl
+	xor ebx,ebx	;stdin
+	mov ecx,0x5402	;TCSETS
 	mov edx,terminal_params
+	int 0x80
+
+	mov eax,4
+	inc ebx	;stdout
+	mov ecx,key
+	mov edx,esi
+	int 0x80
+
+	mov edi,buffer	;text
+	mov ebx,esi	;key lenght
+	mov esi,key	;key
+	pop eax	;text len
+	call encrypt
+
+	mov edx,eax
+	mov eax,4
+	xor ebx,ebx
+	inc ebx
+	mov ecx,edi
 	int 0x80
 
 	mov eax,6
 	pop ebx
-	int 0x80
+	int 0x80	;close file
 
-	mov eax,4
-	mov ebx,1
-	mov ecx,buffer
-	xor edx,edx
-	mov dx,[text_len]
-	int 0x80
-	
-	call encrypt
-
-	mov eax,4
-	int 0x80
-	
-	call decrypt
-
-	mov eax,4
-	int 0x80
-
-	mov eax,1
+	xor eax,eax
+	inc eax
 	xor ebx,ebx
-	int 0x80
+	int 0x80	;prog end
 
-;buffer - readed text
-;text_len - count of symbols in text (2 bytes)
-;key - key
-;key_len - count of symbols in key (1 byte)
 encrypt:
-pushad
-	xor eax,eax
-	xor ebx,ebx
-	xor ecx,ecx	;ecx - pos of cur char in text (starts from 0)
-	xor edx,edx
+	;edi - text
+	;esi - key
+	;eax - text lenght
+	;ebx - key lenght
+	push ecx
+	push edx
+	push eax
+	xor ecx,ecx	;ecx - pos of curr char in text (starts from 0)
 ._loop:
-	mov ax,cx
-	div byte [key_len]	;ah - pos of char in key for encryption
-	xor al,al
-	mov bl,byte [buffer+ecx]
-	add bl,byte [key+eax]
-	sub bl,64
-	mov ax,bx
-	div byte [print_count]
-	add ah,32
-	mov [buffer+ecx],ah
-	inc ecx
-	cmp cx,word [text_len]
-	jl ._loop
-popad
-ret
-
-decrypt:
-pushad
-	xor eax,eax
-	xor ebx,ebx
-	xor ecx,ecx
 	xor edx,edx
-._loop:
-	mov ax,cx
-	div byte [key_len] ;ah - pos of char in key for decryption
-	xor al,al
-	mov bl,[buffer+ecx]	;bl - ecnrypted symbol
-	cmp bl,byte [key+eax]	;
-	jge ._greater
-	add bl,byte [print_count]
-._greater:
-	sub bl,byte [key+eax]
-	add bl,32
-	mov [buffer+ecx],bl
+	mov ax,cx	;DX:AX = CX (IN DX)
+	div bx	;dx - pos of char in key 4 encrypting
+	mov al,[edi+ecx]
+	add al,[esi+edx]
+	sub al,64
+	xor ah,ah
+	xor dx,dx	;DX:AX = AL = encrypted symbol without mod95
+	div word [print_count] ;dl - encrypted symbol without +32
+	add dl,32	;dl - encrypted symbol
+	mov [edi+ecx],dl
 	inc ecx
-	cmp cx,word [text_len]
+	cmp ecx,[esp]
 	jl ._loop
-popad
+pop eax
+pop edx
+pop ecx
 ret

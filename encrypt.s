@@ -7,6 +7,7 @@ section .data
 	buffer8: db '*'
 	backspace: db 0x08, 0x20, 0x08
 	print_count: dw 95
+	endl: db 10
 section .bss
 	terminal_params: resb 36
 	buffer: resb 4096
@@ -52,6 +53,12 @@ _start:
 	mov ecx,buffer
 	int 0x80	;print file content
 	push edx
+	
+	mov eax,4
+	mov ecx,endl
+	xor edx,edx
+	inc edx
+	int 0x80
 
 	mov eax,4
 	mov ecx,password_string
@@ -137,6 +144,14 @@ key_input_done:
 	mov eax,6
 	pop ebx
 	int 0x80	;close file
+
+	mov eax,4
+	xor ebx,ebx
+	inc ebx
+	mov ecx,endl
+	xor edx,edx
+	inc edx
+	int 0x80
 
 	xor eax,eax
 	inc eax

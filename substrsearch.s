@@ -13,7 +13,6 @@ section .bss
 	substring_len: resd 1
 section .text
 _start:
-
 	mov eax,4
 	xor ebx,ebx
 	inc ebx
@@ -24,24 +23,13 @@ _start:
 	xor eax,eax
 	times 3 inc eax
 	xor ebx,ebx
-	mov edi,input_str
-	mov ecx,edi
+	mov esi,input_str
+	mov ecx,esi ;esi - string
 	mov edx,input_str_size
 	int 0x80
 	dec eax
-	and byte [edi+eax],0
+	and byte [esi+eax],0
 
-;;;;;;;;TEST
-	call strlen
-	mov eax,ecx
-	call printReg
-	mov eax,1
-	mov ebx,0
-	int 0x80
-;;;;;;;;
-
-
-	
 	mov eax,4
 	inc ebx
 	mov ecx,msg_substring
@@ -51,15 +39,15 @@ _start:
 	xor eax,eax
 	times 3 inc eax
 	xor ebx,ebx
-	mov esi,input_substr
-	mov ecx,esi
+	mov edi,input_substr
+	mov ecx,edi ;edi - substring
 	mov edx,input_substr_size
 	int 0x80
 	dec eax
-	and byte [esi+eax],0
-	
-	;edi - string
-	;esi - substring
+	and byte [edi+eax],0
+
+	;esi - string
+	;edi - substring
 	call substrsearch
 
 	;eax - start pos of match (-1 if no match)
@@ -70,63 +58,38 @@ _start:
 	xor ebx,ebx
 	int 0x80
 
-strlen:
-;edi - string address
-push eax
-	xor eax,eax
-	xor ecx,ecx
-	dec ecx
-	cld
-	repne scasb
-	neg ecx
-pop eax
-	ret
-
-
 substrsearch:
-;edi - source string
-;esi - substring for search
-push edi
-push esi
+;esi - string
+;edi - substring
+push ebx
 push ecx
-	xor eax,eax
-	xor ecx,ecx
-	dec ecx ;ecx - max 32bit value
-	cld
-push edi
-	repne scasb ;compare with '\0'
-pop edi
-	neg ecx ;ecx - count of symbols in string
-	mov [string_len],ecx
-	xor ecx,ecx
-	dec ecx
-push edi
-	mov edi,esi
-	repne scasb
-pop edi
-	neg ecx ;ecx - count of symbols in substring
-	dec ecx
-	mov [substring_len],ecx
-
-	;edi - string address
-	;esi - substring address
-
-	mov edx,edi ;save string address
-
-	lodsb ;read first symbol from substring (esi)
-	mov ebx,esi ;address of second symbol
+push edx
+	call strlen
+	dec eax
+	mov [substring_len],eax ;[substring_len] == substring.size() - 1
+	xchg edi,esi
+	call strlen
+	mov [string_len],eax ;[string_len] == string.size()
+;edi - string
+;esi - substring
+	lodsb ;search for 1st symbol of substring
+	mov ebx,esi ;save address of 2nd symbol of substring
+	mov edx,edi ;save address of 1st symbol of string
 ._loop:
 	mov esi,ebx
 	mov ecx,[string_len]
-	repne scasb
-	jz ._mb_found
-pop ecx
-pop esi
-pop edi
+	repne scasb ;search for 1st symbol from substring in string
+	jz ._maybe_found
 	xor eax,eax
 	dec eax
-	ret
-._mb_found:
+mov edi,edx
+mov esi,ebx
+dec esi
+pop edx
+pop ecx
+pop ebx
+ret
+._maybe_found:
 	mov [string_len],ecx
 	mov ecx,[substring_len]
 	repe cmpsb
@@ -134,32 +97,50 @@ pop edi
 	sub edi,edx
 	sub edi,[substring_len]
 	mov eax,edi
+mov edi,edx
+mov esi,ebx
+dec esi
+pop edx
 pop ecx
-pop esi
+pop ebx
+ret
+
+strlen:
+;edi - string
+push edi
+	xor eax,eax ;search for '0'
+	xor ecx,ecx
+	dec ecx
+	repne scasb
+	mov eax,edi
 pop edi
+	sub eax,edi
+	dec eax
 ret
 
 printReg:
 ;eax - register with value
+pushad
 	xor ecx,ecx
-	mov bx,10
-	sub esp,14
+	mov ebx,10
+	mov edi,esp
+	dec edi
+	mov byte [edi],10
+	inc ecx
 ._stack_fill:
-	mov esi,esp
 	xor edx,edx
-	div bx
+	div ebx
 	add dl,'0'
-	sub esi,ecx
-	mov [esi],dl
+	dec edi
+	mov byte [edi],dl
 	inc ecx
 	test eax,eax
 	jnz ._stack_fill
-	
-	mov edx,ecx
 	mov eax,4
-	mov ebx,1
-	mov ecx,esi
+	xor ebx,ebx
+	inc ebx
+	mov edx,ecx
+	mov ecx,edi
 	int 0x80
-	add esp,14
+popad
 ret
-	

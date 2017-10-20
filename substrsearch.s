@@ -94,8 +94,8 @@ ret ;return -1(4294967295) if not found
 	mov ecx,[substring_len]
 	repe cmpsb
 	jz ._found
-dec edi
-jmp ._loop
+	dec edi
+	jmp ._loop
 ._found:
 	sub edi,edx
 	sub edi,[substring_len]

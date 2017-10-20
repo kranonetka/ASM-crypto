@@ -80,20 +80,23 @@ push edx
 	mov ecx,[string_len]
 	repne scasb ;search for 1st symbol from substring in string
 	jz ._maybe_found
-	xor eax,eax
-	dec eax
 mov edi,edx
 mov esi,ebx
 dec esi
 pop edx
 pop ecx
 pop ebx
-ret
+xor eax,eax
+dec eax
+ret ;return -1(4294967295) if not found
 ._maybe_found:
 	mov [string_len],ecx
 	mov ecx,[substring_len]
 	repe cmpsb
-	jnz ._loop
+	jz ._found
+dec edi
+jmp ._loop
+._found:
 	sub edi,edx
 	sub edi,[substring_len]
 	mov eax,edi
@@ -103,10 +106,11 @@ dec esi
 pop edx
 pop ecx
 pop ebx
-ret
+ret ;return pos of start matching
 
 strlen:
 ;edi - string
+push ecx
 push edi
 	xor eax,eax ;search for '0'
 	xor ecx,ecx
@@ -116,6 +120,7 @@ push edi
 pop edi
 	sub eax,edi
 	dec eax
+pop ecx
 ret
 
 printReg:

@@ -50,7 +50,7 @@ _start:
 	;edi - substring
 	call substrsearch
 
-	;eax - start pos of match (-1 if no match)
+	;eax - start pos of match (0 if no match)
 	call printReg
 
 	xor eax,eax
@@ -87,8 +87,7 @@ pop edx
 pop ecx
 pop ebx
 xor eax,eax
-dec eax
-ret ;return -1(4294967295) if not found
+ret ;return 0 if not found
 ._maybe_found:
 	mov [string_len],ecx
 	mov ecx,[substring_len]

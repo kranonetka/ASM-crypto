@@ -1,6 +1,8 @@
-*
-!*/
-!*.*
-*.o
-.*
+*	#ignore all
+!*/	#not ignore folders
+!*.*	#not ignore files with extensions
+*.o	#ignore files with .o extenstion
+*.out	#ignore files with .out extension
+.*	#ignore hidden files
+*~	#ignore ~(?) files
 !makefile

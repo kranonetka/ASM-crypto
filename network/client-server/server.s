@@ -1,7 +1,7 @@
-;Создать сокет(вызов функции сокета 102(1,семейство адресов,протокол(4 байта), транспортный протокол==1, 0)
+;Создать сокет eax=102, ebx=1 - int socket(int domain, int type, int protocol)
 ;сокет сохранить
-;bind функция (номер сокета;адрес памяти, где хранится локальный адрес(16 байт) первые 2: тип сети(2), 2 байта:номер порта(программы),IP адрес(на сервере 0.0.0.0); число 16(размер сетевого адреса))
-;функция listen(дескриптор сокета, размер очереди(3 или 5)) 
+;Забиндить сокет eax=102, ebx=2 - int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
+;Начать слушать eax=102, ebx=4 - int listen(int sockfd, int backlog)
 global _start
 section .data
 	socket_args:
@@ -9,27 +9,40 @@ section .data
 		dd 1	;SOCK_STREAM
 		dd 0 	;0
 	bind_args:
-		socket: resd 0
-		sockaddr:
-			dw 2	;sa_family - ????
-			db 0xaa, 0xaa	;port
-			db 0, 0, 0, 0	;IP(0.0.0.0)
-			dd 16	;sockaddr_size
-section .bss
-section .text
+		.socket_fd: resd 0
+		.sockaddr:
+			dw 2	;INET
+			dw 0x8f8f	;PORT
+			dd 0	;IP(0.0.0.0)
+			times 2 dd 0	;gap
+		.bind_args_size:
+			dd 16	;sockaddr size
+	listen_args:
+		.socket_fd: dd 0
+		.queue_size: dd 5
+section .text:
 _start:
 	mov eax,102	;sys_socketcall
 	xor ebx,ebx
-	inc ebx		;socket
-	mov ecx,socket_args	;args
+	inc ebx		;1 - int socket(int domain, int type, int protocol)
+	mov ecx,socket_args	;socket args
 	int 0x80
-	mov [socket],eax	;socket descriptor at socket
+	call printReg
+	mov [bind_args.socket_fd],eax	;save socket descriptor
+	mov [listen_args.socket_fd],eax
 
 	mov eax,102	;sys_socketcall
-	inc ebx	;2 - bind
-	mov ecx,bind_args	;args
-	int 0x80
+	inc ebx	;2 - int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
+	mov ecx,bind_args	;bind args
+	int 0x80	;bind socket
+	call printReg
 
+	mov eax,102
+	times 2 inc ebx	;4 - int listen(int sockfd, int backlog)
+	mov ecx,listen_args
+	int 0x80
+	call printReg
+	
 	xor eax,eax
 	inc eax	;sys_exit
 	xor ebx,ebx	;err_code == 0

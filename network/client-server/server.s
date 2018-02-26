@@ -8,15 +8,15 @@ section .data
 		dd 2	;PF_INET 
 		dd 1	;SOCK_STREAM
 		dd 0 	;0
+	sockaddr_struct:
+		dw 2	;INET
+		dw 0x8f8f	;PORT
+		dd 0	;IP(0,0,0,0)
+		times 2 dd 0	;gap
 	bind_args:
-		.socket_fd: resd 0
-		.sockaddr:
-			dw 2	;INET
-			dw 0x8f8f	;PORT
-			dd 0	;IP(0.0.0.0)
-			times 2 dd 0	;gap
-		.bind_args_size:
-			dd 16	;sockaddr size
+		.socket_fd: dd 0
+		.sockaddr_ptr: dd sockaddr_struct
+		.bind_args_size: dd 16	;sockaddr size
 	listen_args:
 		.socket_fd: dd 0
 		.queue_size: dd 5

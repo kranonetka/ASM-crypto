@@ -3,50 +3,121 @@
 ;Забиндить сокет eax=102, ebx=2 - int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 ;Начать слушать eax=102, ebx=4 - int listen(int sockfd, int backlog)
 global _start
-section .data
-	socket_args:
-		dd 2	;PF_INET 
-		dd 1	;SOCK_STREAM
-		dd 0 	;0
-	sockaddr_struct:
-		dw 2	;INET
-		dw 0x8f8f	;PORT
-		dd 0	;IP(0,0,0,0)
-		times 2 dd 0	;gap
-	bind_args:
-		.socket_fd: dd 0
-		.sockaddr_ptr: dd sockaddr_struct
-		.bind_args_size: dd 16	;sockaddr size
-	listen_args:
-		.socket_fd: dd 0
-		.queue_size: dd 5
-section .text:
+section .bss
+	socket: resb 4
+	client: resb 4
+	buffer: resb 4096
+	bufflen equ $ - buffer
+	read_count: resb 4
+section .text
 _start:
-	mov eax,102	;sys_socketcall
-	xor ebx,ebx
-	inc ebx		;1 - int socket(int domain, int type, int protocol)
-	mov ecx,socket_args	;socket args
-	int 0x80
-	call printReg
-	mov [bind_args.socket_fd],eax	;save socket descriptor
-	mov [listen_args.socket_fd],eax
+		call _socket
+		call _bind
+		call _listen
+	.main_loop:
+		call _accept
 
-	mov eax,102	;sys_socketcall
-	inc ebx	;2 - int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
-	mov ecx,bind_args	;bind args
-	int 0x80	;bind socket
-	call printReg
+		.read_loop:
+			call _read
+			call _echo
 
-	mov eax,102
-	times 2 inc ebx	;4 - int listen(int sockfd, int backlog)
-	mov ecx,listen_args
-	int 0x80
-	call printReg
+			cmp dword [read_count],0
+			je .read_complete
+
+		jmp .read_loop
+
+	.read_complete:
+	call _close_socket
+	mov dword [client],0
+	jmp .main_loop
 	
-	xor eax,eax
-	inc eax	;sys_exit
-	xor ebx,ebx	;err_code == 0
+
+xor eax,eax
+inc eax	;sys_exit
+xor ebx,ebx	;err_code == 0
+int 0x80
+
+_socket:
+	mov eax,102
+	xor ebx,ebx
+	inc ebx	;ebx=1 - socket
+	push dword 0	;0(arg 3)
+	push dword 1	;SOCK_STREAM(arg 2)
+	push dword 2	;PF_INET(arg 1)
+	mov ecx,esp
 	int 0x80
+	call printReg
+	mov [socket],eax
+	add esp,12
+	ret
+
+_bind:
+	mov eax,102
+	xor ebx,ebx
+	times 2 inc ebx	;ebx=2 - bind
+	push dword 0	;IP(0.0.0.0)
+	push word 0x8f8f	;PORT
+	push word 2	;INET
+	mov ecx,esp
+	push dword 16	;sockaddr_len(arg 3)
+	push ecx	;sockaddr_ptr(arg 2)
+	push dword [socket]	;socket_fd(arg 1)
+	mov ecx,esp
+	int 0x80
+	call printReg
+	add esp,20
+	ret
+	
+_listen:
+	mov eax,102
+	mov ebx,4	;ebx=4 - listen
+	push dword 5	;queue size
+	push dword [socket]	;socket_fd
+	int 0x80
+	call printReg
+	add esp,8
+	ret
+
+_accept:
+	mov eax,102
+	mov ebx,5	;ebx=5 - accept
+	push dword 0	;lenght(arg 3)
+	push dword 0	;NULL ptr(arg 2)
+	push dword [socket]	;socket_fd(arg 1)
+	mov ecx,esp
+	int 0x80
+	call printReg
+	mov [client],eax
+	add esp,12
+	ret
+
+_read:
+	xor eax,eax
+	mov ebx,[client]
+	mov ecx,buffer
+	mov edx,bufflen
+	int 0x80
+	call printReg
+	mov [read_count],eax
+	ret
+
+_echo:
+	xor eax,eax
+	inc eax
+	mov ebx,[client]
+	mov ecx,buffer
+	mov edx,[read_count]
+	int 0x80
+	call printReg
+	ret
+
+_close_socket:
+	xor eax,eax
+	times 3 inc eax
+	mov ebx,[client]
+	int 0x80
+	call printReg
+	ret
 
 printReg:
 ;eax - register with value

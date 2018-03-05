@@ -93,12 +93,18 @@ _accept:
 
 _read:
 	xor eax,eax
+	times 3 inc eax
 	mov ebx,[client]
 	mov ecx,buffer
 	mov edx,bufflen
 	int 0x80
-	call printReg
 	mov [read_count],eax
+	call printReg
+	mov edx,eax
+	mov eax,4
+	mov ebx,1
+	int 0x80
+	call printReg
 	ret
 
 _echo:

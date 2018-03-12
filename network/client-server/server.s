@@ -31,7 +31,6 @@ _start:
 	mov dword [client],0
 	jmp .main_loop
 	
-
 xor eax,eax
 inc eax	;sys_exit
 xor ebx,ebx	;err_code == 0
@@ -39,22 +38,20 @@ int 0x80
 
 _socket:
 	mov eax,102
-	xor ebx,ebx
-	inc ebx	;ebx=1 - socket
+	mov ebx,1	;ebx=1 - socket
 	push dword 0	;0(arg 3)
 	push dword 1	;SOCK_STREAM(arg 2)
 	push dword 2	;PF_INET(arg 1)
 	mov ecx,esp
 	int 0x80
-	call printReg
+	;call printReg
 	mov [socket],eax
 	add esp,12
 	ret
 
 _bind:
 	mov eax,102
-	xor ebx,ebx
-	times 2 inc ebx	;ebx=2 - bind
+	mov ebx,2	;ebx=2 - bind
 	push dword 0	;IP(0.0.0.0)
 	push word 0x8f8f	;PORT
 	push word 2	;INET
@@ -64,7 +61,7 @@ _bind:
 	push dword [socket]	;socket_fd(arg 1)
 	mov ecx,esp
 	int 0x80
-	call printReg
+	;call printReg
 	add esp,20
 	ret
 	
@@ -74,7 +71,7 @@ _listen:
 	push dword 5	;queue size
 	push dword [socket]	;socket_fd
 	int 0x80
-	call printReg
+	;call printReg
 	add esp,8
 	ret
 
@@ -86,43 +83,40 @@ _accept:
 	push dword [socket]	;socket_fd(arg 1)
 	mov ecx,esp
 	int 0x80
-	call printReg
+	;call printReg
 	mov [client],eax
 	add esp,12
 	ret
 
 _read:
-	xor eax,eax
-	times 3 inc eax
+	mov eax,3
 	mov ebx,[client]
 	mov ecx,buffer
 	mov edx,bufflen
 	int 0x80
 	mov [read_count],eax
-	call printReg
+	;call printReg
 	mov edx,eax
 	mov eax,4
 	mov ebx,1
 	int 0x80
-	call printReg
+	;call printReg
 	ret
 
 _echo:
-	xor eax,eax
-	inc eax
+	mov eax,4
 	mov ebx,[client]
 	mov ecx,buffer
 	mov edx,[read_count]
 	int 0x80
-	call printReg
+	;call printReg
 	ret
 
 _close_socket:
-	xor eax,eax
-	times 3 inc eax
+	mov eax,6
 	mov ebx,[client]
 	int 0x80
-	call printReg
+	;call printReg
 	ret
 
 printReg:

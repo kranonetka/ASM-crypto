@@ -2,6 +2,8 @@
 ;сокет сохранить
 ;Забиндить сокет eax=102, ebx=2 - int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 ;Начать слушать eax=102, ebx=4 - int listen(int sockfd, int backlog)
+
+;TODO: распараллеливание: клонировать дескриптор и запустить из сервера другой сервер
 global _start
 section .bss
 	socket: resb 4

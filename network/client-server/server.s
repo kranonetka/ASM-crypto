@@ -1,10 +1,9 @@
-;Создать сокет eax=102, ebx=1 - int socket(int domain, int type, int protocol)
-;сокет сохранить
-;Забиндить сокет eax=102, ebx=2 - int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
-;Начать слушать eax=102, ebx=4 - int listen(int sockfd, int backlog)
-
-;TODO: распараллеливание: клонировать дескриптор и запустить из сервера другой сервер
 global _start
+section .data
+	CONN_MSG: db "New client connected!",10,0
+	CONN_MSG_LEN equ $ - CONN_MSG
+	NEW_MSG: db "Message from client: ",0
+	NEW_MSG_LEN equ $ - NEW_MSG
 section .bss
 	socket: resb 4
 	client: resb 4
@@ -18,25 +17,41 @@ _start:
 		call _listen
 	.main_loop:
 		call _accept
-
-		.read_loop:
+		call _fork
+		test eax,eax
+		jnz .read
+			call _close_socket
+			jmp .main_loop
+		.read:
 			call _read
+			test eax,eax
+			jz .read_done
+			mov eax,4
+			mov ebx,1
+			mov ecx,NEW_MSG
+			mov edx,NEW_MSG_LEN
+			int 0x80
+			mov eax,4
+			mov ecx,buffer
+			mov edx,[read_count]
+			int 0x80
 			call _echo
+			jmp .read
+		.read_done:
+			call _close_socket
+			jmp .main_loop
 
-			cmp dword [read_count],0
-			je .read_complete
+_exit:
+	xor eax,eax
+	inc eax
+	int 0x80
 
-		jmp .read_loop
-
-	.read_complete:
-	call _close_socket
-	mov dword [client],0
-	jmp .main_loop
-	
-xor eax,eax
-inc eax	;sys_exit
-xor ebx,ebx	;err_code == 0
-int 0x80
+_fork:
+	xor eax,eax
+	times 2 inc eax
+	int 0x80
+	;call printReg
+	ret
 
 _socket:
 	mov eax,102
@@ -55,7 +70,7 @@ _bind:
 	mov eax,102
 	mov ebx,2	;ebx=2 - bind
 	push dword 0	;IP(0.0.0.0)
-	push word 0x8f8f	;PORT
+	push word 0x8f8f	;PORT(36751)
 	push word 2	;INET
 	mov ecx,esp
 	push dword 16	;sockaddr_len(arg 3)
@@ -63,7 +78,7 @@ _bind:
 	push dword [socket]	;socket_fd(arg 1)
 	mov ecx,esp
 	int 0x80
-	;call printReg
+	call printReg
 	add esp,20
 	ret
 	
@@ -87,6 +102,11 @@ _accept:
 	int 0x80
 	;call printReg
 	mov [client],eax
+	mov eax,4
+	mov ebx,1
+	mov ecx,CONN_MSG
+	mov edx,CONN_MSG_LEN
+	int 0x80
 	add esp,12
 	ret
 
@@ -97,11 +117,6 @@ _read:
 	mov edx,bufflen
 	int 0x80
 	mov [read_count],eax
-	;call printReg
-	mov edx,eax
-	mov eax,4
-	mov ebx,1
-	int 0x80
 	;call printReg
 	ret
 
@@ -118,6 +133,7 @@ _close_socket:
 	mov eax,6
 	mov ebx,[client]
 	int 0x80
+	mov dword [client],0
 	;call printReg
 	ret
 

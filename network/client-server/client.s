@@ -17,9 +17,8 @@ section .bss
 section .text
 _start:
 	call _socket
-
 	call _connect
-.loop:
+.main_loop:
 	mov eax,4
 	mov ebx,1
 	mov ecx,msg
@@ -31,18 +30,19 @@ _start:
 	mov ecx,uinput_buffer
 	mov edx,uinput_bufflen
 	int 0x80
+	cmp eax,1
+	je .loop_done
 	mov [uinput_read],eax
-
 	call _send
-
 	call _read
-jmp .loop
-	call _close_socket
+jmp .main_loop
 
-xor eax,eax
-inc eax
-xor ebx,ebx
-int 0x80
+.loop_done:
+	call _close_socket
+	xor eax,eax
+	inc eax
+	xor ebx,ebx
+	int 0x80
 
 _read:
 	mov eax,3

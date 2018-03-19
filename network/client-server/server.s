@@ -41,11 +41,6 @@ _start:
 			call _close_socket
 			jmp .main_loop
 
-_exit:
-	xor eax,eax
-	inc eax
-	int 0x80
-
 _fork:
 	xor eax,eax
 	times 2 inc eax

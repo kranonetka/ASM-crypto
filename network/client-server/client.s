@@ -1,11 +1,7 @@
-;socket
-;connect
-;send
 global _start
 section .data
 	msg: db "Message for server: ",0
 	msg_len equ $ - msg
-
 section .bss
 	uinput_buffer: resb 4096
 	uinput_bufflen equ $ - uinput_buffer

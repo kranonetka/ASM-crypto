@@ -8,7 +8,7 @@ int main(int argc, char **argv)
 	int x = 1;
 	snprintf(buf, sizeof(buf), argv[1]);
 	buf[sizeof(buf) - 1] = 0;
-	printf("Buffer size i: (%d)\nData input: %s\n", strlen(buf), buf);
+	printf("Buffer size is: (%d)\nData input: %s\n", strlen(buf), buf);
 	printf("x equals: %d\nin hex: %#x\nMemory address for x: (%p)\n", x, x, &x);
 	return 0;
 }

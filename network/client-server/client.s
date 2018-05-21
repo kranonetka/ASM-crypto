@@ -84,7 +84,7 @@ _connect:
 	mov eax,102
 	mov ebx,3	;ebx=3 - connect
 	push dword 0x0100007f	;server IP(127.0.0.1)
-	push word 0x8f8f	;server PORT
+	push word 0xaaaa	;server PORT
 	push word 2	;INET
 	mov ecx,esp
 	push dword 16	;sockaddr_len(arg 3)

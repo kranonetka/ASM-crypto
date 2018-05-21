@@ -65,7 +65,7 @@ _bind:
 	mov eax,102
 	mov ebx,2	;ebx=2 - bind
 	push dword 0	;IP(0.0.0.0)
-	push word 0x8f8f	;PORT(36751)
+	push word 0xaaaa	;PORT(43690)
 	push word 2	;INET
 	mov ecx,esp
 	push dword 16	;sockaddr_len(arg 3)

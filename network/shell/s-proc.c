@@ -7,7 +7,7 @@ int main(int argc, char **argv){
   unsigned char *code, *pcode;
   int i, l, flen;
   void (*fptr)(void);
-  code=malloc(4096);
+  code=malloc(1024);
   if(argc!=2) { 
     printf("Печать и исполнение shell-кода : %s <файл>\n",
 		 argv[0]); exit(1); 
@@ -26,6 +26,7 @@ int main(int argc, char **argv){
   printf("\nДлина shell-кода %d байтов: \n", flen);
   printf("\n shellcode[] = \n");
   l=10;				// 10 - число байт в строке
+  int zero = 0;
   for(i=0; i<flen; ++i){
     if(l>=10){
       if(i) printf("\"\n"); 
@@ -33,11 +34,20 @@ int main(int argc, char **argv){
     }
     ++l;
     printf("\\x%02x", ((unsigned char *)code)[i]);
+	if ( ((unsigned char *)code)[i] == 0 )
+		zero = 1;
   }
   printf("\";\n\n");
+  if (zero)
+{
+	printf("Есть 0\n");
+}
+else
+{
   printf("Вызывается код...");
   void *prt=(void *)((long int)code&0xfffff000);
   mprotect(prt, 1024, 7);
   fptr=(void(*) (void)) code;
   (*fptr)();
+}
 }
